@@ -20,15 +20,15 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":false,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="QY五子棋              :root {             --cell-size: 5vw;             --board-padding: 2vw;         }          body {             display: flex;             flex-direction: column;">
+  <meta name="description" content="智能五子棋              :root {             --cell-size: 5vw;             --board-padding: 2vw;         }          body {             display: flex;             flex-direction: column;">
 <meta property="og:type" content="website">
 <meta property="og:title" content="随手记">
 <meta property="og:url" content="http://example.com/game/QY%E4%BA%94%E5%AD%90%E6%A3%8B.html">
 <meta property="og:site_name" content="随手记">
-<meta property="og:description" content="QY五子棋              :root {             --cell-size: 5vw;             --board-padding: 2vw;         }          body {             display: flex;             flex-direction: column;">
+<meta property="og:description" content="智能五子棋              :root {             --cell-size: 5vw;             --board-padding: 2vw;         }          body {             display: flex;             flex-direction: column;">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2025-03-05T08:55:51.749Z">
-<meta property="article:modified_time" content="2025-03-05T08:55:40.502Z">
+<meta property="article:published_time" content="2025-03-05T09:24:11.688Z">
+<meta property="article:modified_time" content="2025-03-05T09:24:11.688Z">
 <meta property="article:author" content="QY">
 <meta name="twitter:card" content="summary">
 
@@ -179,7 +179,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QY五子棋</title>
+    <title>智能五子棋</title>
     <style>
         :root {
             --cell-size: 5vw;
@@ -260,12 +260,16 @@
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
             text-align: center;
-            display: none;
         }
 
         .mode-option {
             margin: 10px;
             padding: 15px 30px;
+        }
+
+        #aiOptions {
+            display: none;
+            margin-top: 15px;
         }
 
         #message {
@@ -285,7 +289,6 @@
     </style>
 </head>
 <body>
-    <!-- HTML部分 -->
     <div id="controls">
         <button id="undo">悔棋</button>
         <button id="reset">新游戏</button>
@@ -297,6 +300,10 @@
         <h3>选择游戏模式</h3>
         <button class="mode-option" id="pvp">人人对战</button>
         <button class="mode-option" id="pve">人机对战</button>
+        <div id="aiOptions">
+            <button class="mode-option" id="aiSecond">玩家先手</button>
+            <button class="mode-option" id="aiFirst">AI先手</button>
+        </div>
     </div>
     <script>
         const boardSize = 15;
@@ -304,7 +311,7 @@
         let board = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
         let history = [];
         let aiMode = false;
-
+    
         // 初始化棋盘
         function createBoard() {
             const boardElement = document.getElementById('board');
@@ -321,9 +328,8 @@
                 }
             }
         }
-
+    
         class GomokuAI {
-            // 原有AI评分逻辑保持不变
             static evaluatePosition(board, player, i, j) {
                 const directions = [
                     [ [0,1], [0,-1] ],
@@ -331,9 +337,9 @@
                     [ [1,1], [-1,-1] ],
                     [ [1,-1], [-1,1] ]
                 ];
-
+    
                 let totalScore = 0;
-
+    
                 directions.forEach(([forward, backward]) => {
                     let sequence = 1;
                     let openEnds = 0;
@@ -347,7 +353,7 @@
                         x += dx;
                         y += dy;
                     }
-
+    
                     [dx, dy] = backward;
                     x = i + dx, y = j + dy;
                     while (x >= 0 && x < boardSize && y >= 0 && y < boardSize) {
@@ -357,7 +363,7 @@
                         x += dx;
                         y += dy;
                     }
-
+    
                     if (sequence >= 5) totalScore += 100000;
                     else {
                         const scores = {
@@ -369,10 +375,9 @@
                         totalScore += scores[sequence] || 0;
                     }
                 });
-
                 return totalScore;
             }
-
+    
             static findBestMove(board, player) {
                 let bestScore = -Infinity;
                 let bestMoves = [];
@@ -401,41 +406,42 @@
                     : null;
             }
         }
-// 新增AI移动函数
-function makeAIMove() {
-        const bestMove = GomokuAI.findBestMove(board, 'white');
-        if (bestMove) {
-            makeMove(bestMove.i, bestMove.j);
-            if (checkWin(bestMove.i, bestMove.j, 'white')) return;
-            currentPlayer = 'black';
+    
+        // AI移动函数
+        function makeAIMove() {
+            const bestMove = GomokuAI.findBestMove(board, 'white');
+            if (bestMove) {
+                makeMove(bestMove.i, bestMove.j);
+                if (checkWin(bestMove.i, bestMove.j, 'white')) return;
+                currentPlayer = 'black';
+            }
         }
-    }
-
-        // 点击处理函数
+    
+        // 点击处理
         function handleCellClick(event) {
             const row = parseInt(event.target.dataset.row);
             const col = parseInt(event.target.dataset.col);
             if (board[row][col] !== null || (aiMode && currentPlayer === 'white')) return;
-
+    
             makeMove(row, col);
             if (checkWin(row, col, currentPlayer)) return;
-
+    
             currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
             
             if (aiMode && currentPlayer === 'white') {
                 setTimeout(makeAIMove, 500);
             }
         }
-
-        // 核心游戏逻辑保持不变
+    
+        // 通用移动执行
         function makeMove(row, col) {
             board[row][col] = currentPlayer;
             history.push({row, col, player: currentPlayer});
             document.querySelector(`[data-row="${row}"][data-col="${col}"]`)
                 .classList.add(currentPlayer);
         }
-
-        // 胜负判断函数（已修复）
+    
+        // 胜负判断
         function checkWin(row, col, player) {
             const directions = [[1,0], [0,1], [1,1], [1,-1]];
             for (const [dx, dy] of directions) {
@@ -447,7 +453,7 @@ function makeAIMove() {
                     x += dx;
                     y += dy;
                 }
-
+    
                 x = row - dx;
                 y = col - dy;
                 while (x >= 0 && x < boardSize && y >= 0 && y < boardSize && board[x][y] === player) {
@@ -455,7 +461,7 @@ function makeAIMove() {
                     x -= dx;
                     y -= dy;
                 }
-
+    
                 if (count >= 5) {
                     endGame();
                     return true;
@@ -463,30 +469,43 @@ function makeAIMove() {
             }
             return false;
         }
-
-        // 事件监听和游戏控制
-        document.getElementById('pvp').addEventListener('click', () => startNewGame(false));
-        document.getElementById('pve').addEventListener('click', () => startNewGame(true));
-
-        function startNewGame(enableAI) {
-        aiMode = enableAI;
-        board = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
-        history = [];
-        currentPlayer = 'black';
-        document.getElementById('modeSelection').style.display = 'none';
-        document.querySelectorAll('.cell').forEach(cell => {
-            cell.classList.remove('black', 'white');
-            cell.addEventListener('click', handleCellClick);
-        });
-        document.getElementById('message').textContent = '';
-        
-        // 仅当AI模式且AI需要先手时触发
-        if (aiMode && currentPlayer === 'white') {
-            setTimeout(makeAIMove, 500);
+    
+        // 初始化游戏
+        function startNewGame(enableAI, aiFirst = false) {
+            aiMode = enableAI;
+            board = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+            history = [];
+            currentPlayer = aiFirst ? 'white' : 'black';
+            
+            document.getElementById('modeSelection').style.display = 'none';
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('black', 'white');
+                cell.addEventListener('click', handleCellClick);
+            });
+            document.getElementById('message').textContent = '';
+            
+            if (aiMode && aiFirst) {
+                setTimeout(makeAIMove, 500);
+            }
         }
-    }
-
-        // 剩余未变化的原有功能
+    
+        // 事件监听
+        document.getElementById('pvp').addEventListener('click', () => {
+            startNewGame(false);
+        });
+    
+        document.getElementById('pve').addEventListener('click', () => {
+            document.getElementById('aiOptions').style.display = 'block';
+        });
+    
+        document.getElementById('aiFirst').addEventListener('click', () => {
+            startNewGame(true, true);
+        });
+    
+        document.getElementById('aiSecond').addEventListener('click', () => {
+            startNewGame(true, false);
+        });
+    
         document.getElementById('undo').addEventListener('click', () => {
             if (history.length === 0) return;
             const last = history.pop();
@@ -495,11 +514,12 @@ function makeAIMove() {
                 .classList.remove(last.player);
             currentPlayer = last.player;
         });
-
+    
         document.getElementById('reset').addEventListener('click', () => {
             document.getElementById('modeSelection').style.display = 'block';
+            document.getElementById('aiOptions').style.display = 'none';
         });
-
+    
         function endGame() {
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.removeEventListener('click', handleCellClick);
@@ -507,12 +527,14 @@ function makeAIMove() {
             document.getElementById('message').textContent = 
                 `${currentPlayer === 'black' ? '黑棋' : '白棋'} 获胜！`;
         }
-
+    
+        // 初始化
         createBoard();
+        document.getElementById('modeSelection').style.display = 'block';
     </script>
-</body>
-</html>
-
+    </body>
+    </html>
+    
       </div>
       
       
